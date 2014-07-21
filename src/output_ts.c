@@ -71,7 +71,7 @@ static u_int convert_to_nal(unsigned char const *first,
 
   while(first < last) {
     uint32_t packet_len = read_32(first);
-    if(packet_len > last - first) return 0;
+    if(packet_len > (uint32_t)(last - first)) return 0;
     first += 4;
 
     write_32(dst, 0x00000001);

@@ -1213,11 +1213,6 @@ static const uint32_t aac_samplerates[] = {
   16000, 12000, 11025,  8000,  7350,     0,     0,     0
 };
 
-static const uint32_t aac_channels[] = {
-  0, 1, 2, 3, 4, 5, 6, 8,
-  0, 0, 0, 0, 0, 0, 0, 0
-};
-
 static int mp4_samplerate_to_index(unsigned int samplerate) {
   unsigned int i;
   for(i = 0; i != 13; ++i) {

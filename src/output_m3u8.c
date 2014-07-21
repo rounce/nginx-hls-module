@@ -32,7 +32,10 @@ extern int mp4_create_m3u8(struct mp4_context_t *mp4_context,
   char extra[100] = "";
   //if(options->fragment_track_id) p_extra = ngx_sprintf(p_extra, "&audio=%ud", options->fragment_track_id);
   //if(options->hash) p_extra = ngx_sprintf(p_extra, "&hash=%s", options->hash);
-  strncpy(extra, (const char *)mp4_context->r->args.data, mp4_context->r->args.len < 100 ? mp4_context->r->args.len : 100);
+  if(mp4_context->r->args.data) {
+    extra[0] = '&';
+    strncpy(extra + 1, (const char *)mp4_context->r->args.data, mp4_context->r->args.len < 100 ? mp4_context->r->args.len : 100);
+  }
 
   p = ngx_sprintf(p, "#EXTM3U\n");
 
@@ -93,7 +96,7 @@ extern int mp4_create_m3u8(struct mp4_context_t *mp4_context,
         float duration = (float)((cur->pts_ - prev->pts_) / (float)trak->mdia_->mdhd_->timescale_) + 0.0005;
         if(duration >= (float)options->seconds || cur + 1 == last) {
           p = ngx_sprintf(p, "#EXTINF:%.3f,\n", duration);
-          p = ngx_sprintf(p, "%s.hls?video=%uL&%s\n", filename, prev_i, extra);
+          p = ngx_sprintf(p, "%s.hls?video=%uL%s\n", filename, prev_i, extra);
           prev = cur;
           prev_i = i;
           ++result;

@@ -24,39 +24,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-static char *uri_escape(char const *first, char const *last, char *dst) {
-  // unreserved character as per IETF RFC3986 section 2.3
-  static const char unreserved_chars[] =
-    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._~";
-
-  while(first != last) {
-    if(strchr(unreserved_chars, *first)) {
-      *dst++ = *first;
-    } else {
-      *dst++ = '%';
-      *dst++ = unreserved_chars[(*first >> 4) & 15];
-      *dst++ = unreserved_chars[(*first >> 0) & 15];
-    }
-    ++first;
-  }
-
-  return dst;
-}
-
 extern int mp4_create_m3u8(struct mp4_context_t *mp4_context,
                            struct bucket_t *bucket, struct mp4_split_options_t const *options) {
   int result = 0;
   u_char *buffer = (u_char *)ngx_palloc(mp4_context->r->pool, 1024 * 256);
   u_char *p = buffer;
-  u_char extra[100] = "";
+  char extra[100] = "";
   //if(options->fragment_track_id) p_extra = ngx_sprintf(p_extra, "&audio=%ud", options->fragment_track_id);
   //if(options->hash) p_extra = ngx_sprintf(p_extra, "&hash=%s", options->hash);
-  strncpy(extra, mp4_context->r->args.data, mp4_context->r->args.len < 100 ? mp4_context->r->args.len : 100);
+  strncpy(extra, (const char *)mp4_context->r->args.data, mp4_context->r->args.len < 100 ? mp4_context->r->args.len : 100);
 
-  p += sprintf(p, "#EXTM3U\n");
+  p = ngx_sprintf(p, "#EXTM3U\n");
 
-  u_char *filename = (u_char *)ngx_palloc(mp4_context->r->pool, strlen(mp4_context->file->name.data) - mp4_context->root + 2);
-  strcpy(filename, mp4_context->file->name.data + mp4_context->root);
+  char *filename = (char *)ngx_palloc(mp4_context->r->pool, ngx_strlen(mp4_context->file->name.data) - mp4_context->root + 2);
+  strcpy(filename, (const char *)(mp4_context->file->name.data + mp4_context->root));
   char *ext = strrchr(filename, '.');
   *ext = 0;
   //strcpy(ext, ".m3u8");

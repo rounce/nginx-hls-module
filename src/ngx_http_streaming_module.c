@@ -26,6 +26,9 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 #include "mp4_io.h"
+#include "output_m3u8.h"
+#include "view_count.h"
+#include "output_ts.h"
 #include "moov.h"
 #include "output_bucket.h"
 #ifdef BUILDING_H264_STREAMING
@@ -137,8 +140,8 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
   struct bucket_t *bucket = bucket_init(r);
   int result = 0;
   {
-    if(strstr(path.data, "m3u8")) m3u8 = 1;
-    char *ext = strrchr(path.data, '.');
+    if(ngx_strstr(path.data, "m3u8")) m3u8 = 1;
+    char *ext = strrchr((const char *)path.data, '.');
     strcpy(ext, ".mp4");
   }
 
@@ -225,9 +228,9 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
 
   if(m3u8) {
     if((result = mp4_create_m3u8(mp4_context, bucket, options))) {
-      u_char action[50];
+      char action[50];
       sprintf(action, "ios_playlist&segments=%d", result);
-      view_count(mp4_context, path.data, options ? options->hash : NULL, action);
+      view_count(mp4_context, (char *)path.data, options ? options->hash : NULL, action);
     }
     r->allow_ranges = 0;
   } else {
@@ -237,9 +240,9 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
       ngx_log_error(NGX_LOG_ALERT, nlog, ngx_errno, "output_ts failed");
       return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
-    u_char action[50] = "ios_view";
+    char action[50] = "ios_view";
     //if(options->hash) ngx_log_error(NGX_LOG_ALERT, nlog, ngx_errno, "test hash %s", options->hash);
-    view_count(mp4_context, path.data, options->hash, action);
+    view_count(mp4_context, (char *)path.data, options->hash, action);
     r->allow_ranges = 1;
   }
 

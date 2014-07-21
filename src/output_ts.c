@@ -749,7 +749,6 @@ int output_ts(struct mp4_context_t *mp4_context, struct bucket_t *bucket, struct
       MP4_ERROR("%s", "sample is null");
       return 0;
     }
-    samples_t *next = sample;
     samples_t *last = trak->samples_ + trak->samples_size_;
 
     u_int i = 0;
@@ -864,7 +863,7 @@ int output_ts(struct mp4_context_t *mp4_context, struct bucket_t *bucket, struct
         flush_audio_packet(fragment[order].stream, muxer->bucket_);
       order = new_order;
       if(order == -1) break;
-      if(order > max_fragment_size) break;
+      if(order > (int)max_fragment_size) break;
 
       // convert time values to 90KHz clock
       uint64_t dts0 = fragment[order].first->pts_;

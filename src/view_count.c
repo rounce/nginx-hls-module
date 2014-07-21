@@ -16,11 +16,7 @@
 #include "view_count.h"
 #include "mp4_io.h"
 
-static ngx_uint_t ngx_hls_shm_size;
-static ngx_shm_zone_t *ngx_hls_shm_zone;
-static ngx_rbtree_t *ngx_hls_rbtree;
-
-extern void view_count(struct mp4_context_t *mp4_context, char *filename, char *hash, u_char action[50]) {
+extern void view_count(struct mp4_context_t *mp4_context, char *filename, char *hash, char action[50]) {
   if(hash == NULL) return;
   char str[256];
   char file[256];

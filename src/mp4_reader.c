@@ -343,8 +343,6 @@ static int esds_read(mp4_context_t const *mp4_context,
   unsigned int tag;
   unsigned int len;
 
-  uint16_t stream_id;
-  unsigned int stream_priority;
   unsigned int object_type_id;
   unsigned int stream_type;
   unsigned int buffer_size_db;
@@ -363,12 +361,9 @@ static int esds_read(mp4_context_t const *mp4_context,
   if(tag == MP4_ELEMENTARY_STREAM_DESCRIPTOR_TAG) {
     len = mp4_read_desc_len(&buffer);
     MP4_INFO("Elementary Stream Descriptor: len=%u\n", len);
-    stream_id = read_16(buffer + 0);
-    stream_priority = read_8(buffer + 2);
     buffer += 3;
   } else {
     MP4_INFO("Elementary Stream Descriptor: len=%u\n", 2);
-    stream_id = read_16(buffer + 0);
     buffer += 2;
   }
 
@@ -478,17 +473,8 @@ stsd_parse_vide(mp4_context_t const *mp4_context,
       case FOURCC('a', 'v', 'c', 'C'): {
         unsigned int sequence_parameter_sets;
         unsigned int picture_parameter_sets;
-        unsigned int configuration_version;
-        unsigned int profile_indication;
-        unsigned int profile_compatibility;
-        unsigned int level_indication;
 
         sample_entry->codec_private_data_ = buffer;
-
-        configuration_version = read_8(buffer + 0);
-        profile_indication = read_8(buffer + 1);
-        profile_compatibility = read_8(buffer + 2);
-        level_indication = read_8(buffer + 3);
 
         sample_entry->nal_unit_length_ = (read_8(buffer + 4) & 3) + 1;
         sequence_parameter_sets = read_8(buffer + 5) & 0x1f;
@@ -2103,7 +2089,7 @@ static int trak_build_index(mp4_context_t const *mp4_context, trak_t *trak) {
 
   // calc sample offsets
   s = 0;
-  uint64_t pos;
+  uint64_t pos = 0;
   for(j = 0; j < trak->chunks_size_; j++) {
     pos = trak->chunks_[j].pos_;
     unsigned int i;
@@ -2179,7 +2165,6 @@ static void copy_sync_samples_to_audio_track(trak_t *video, trak_t *audio) {
 extern int moov_build_index(struct mp4_context_t const *mp4_context,
                             struct moov_t *moov) {
   // Build the track index
-  trak_t *audio_trak = NULL;
   trak_t *video_trak = NULL;
   unsigned int track;
 
@@ -2193,7 +2178,6 @@ extern int moov_build_index(struct mp4_context_t const *mp4_context,
     trak_t *trak = moov->traks_[track];
     switch(trak->mdia_->hdlr_->handler_type_) {
     case FOURCC('s', 'o', 'u', 'n'):
-      audio_trak = trak;
       break;
     case FOURCC('v', 'i', 'd', 'e'):
       video_trak = trak;

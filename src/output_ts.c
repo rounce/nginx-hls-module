@@ -636,38 +636,33 @@ static void write_video_packet(mpegts_stream_t *mpegts_stream,
             4 + mpegts_stream->sample_entry_->pps_length_;
   }
 
-  {
-    unsigned char *buf = (unsigned char *)malloc(size);
-    if(buf == NULL) return;
-    unsigned char *p = buf;
+  unsigned char *buf = (unsigned char *)malloc(size + 10);
+  if(buf == NULL) return;
+  unsigned char *p = buf;
 
-    memcpy(p, aud_nal, sizeof(aud_nal));
-    p += sizeof(aud_nal);
+  memcpy(p, aud_nal, sizeof(aud_nal));
+  p += sizeof(aud_nal);
 
-    if(mpegts_stream->packets_ == 0) {
-      // sps
-      p = write_32(p, 1);
-      memcpy(p, mpegts_stream->sample_entry_->sps_,
-             mpegts_stream->sample_entry_->sps_length_);
-      p += mpegts_stream->sample_entry_->sps_length_;
+  if(mpegts_stream->packets_ == 0) {
+    // sps
+    p = write_32(p, 1);
+    memcpy(p, mpegts_stream->sample_entry_->sps_,
+           mpegts_stream->sample_entry_->sps_length_);
+    p += mpegts_stream->sample_entry_->sps_length_;
 
-      // pps
-      p = write_32(p, 1);
-      memcpy(p, mpegts_stream->sample_entry_->pps_,
-             mpegts_stream->sample_entry_->pps_length_);
-      p += mpegts_stream->sample_entry_->pps_length_;
-    }
-
-    if(convert_to_nal(first, last, p)) {
-      p += last - first;
-      write_packet(mpegts_stream, bucket, dts, pts, buf, size);
-    }
-
-    jmp_buf ex_buf__;
-    if(!setjmp(ex_buf__)) {
-      free(buf);
-    }
+    // pps
+    p = write_32(p, 1);
+    memcpy(p, mpegts_stream->sample_entry_->pps_,
+           mpegts_stream->sample_entry_->pps_length_);
+    p += mpegts_stream->sample_entry_->pps_length_;
   }
+
+  if(convert_to_nal(first, last, p)) {
+    p += last - first;
+    write_packet(mpegts_stream, bucket, dts, pts, buf, size);
+  }
+
+  free(buf);
 }
 
 static void write_audio_packet(mpegts_stream_t *mpegts_stream,

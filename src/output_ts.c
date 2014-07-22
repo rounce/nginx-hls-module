@@ -730,7 +730,7 @@ int output_ts(struct mp4_context_t *mp4_context, struct bucket_t *bucket, struct
   moov_t const *moov = mp4_context->moov;
   if(!moov_build_index(mp4_context, mp4_context->moov)) return 0;
 
-  unsigned int track_id, i, audio_tracks = 0, last_track = 0, last_chunk = 0, max_fragment_size = 2;
+  uint32_t track_id, i, audio_tracks = 0, last_track = 0, last_chunk = 0, max_fragment_size = 2;
 
   fragment_t fragment[max_fragment_size];
   for(track_id = 0; track_id < max_fragment_size; ++track_id) fragment[track_id].trak = NULL;

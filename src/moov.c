@@ -97,14 +97,14 @@ static int get_aligned_start_and_end(struct mp4_context_t const *mp4_context,
                                      unsigned int *trak_sample_end) {
   unsigned int pass;
   struct moov_t *moov = mp4_context->moov;
-  long moov_time_scale = moov->mvhd_->timescale_;
+  uint32_t moov_time_scale = moov->mvhd_->timescale_;
 
   for(pass = 0; pass != 2; ++pass) {
     unsigned int i;
     for(i = 0; i != moov->tracks_; ++i) {
       struct trak_t *trak = moov->traks_[i];
       struct stbl_t *stbl = trak->mdia_->minf_->stbl_;
-      long trak_time_scale = trak->mdia_->mdhd_->timescale_;
+      uint32_t trak_time_scale = trak->mdia_->mdhd_->timescale_;
 
       // 1st pass: stss present, 2nd pass: no stss present
       if(pass == 0 && !stbl->stss_)
@@ -282,7 +282,7 @@ extern int mp4_split(struct mp4_context_t *mp4_context,
 
   {
     struct moov_t const *moov = mp4_context->moov;
-    long moov_time_scale = moov->mvhd_->timescale_;
+    uint32_t moov_time_scale = moov->mvhd_->timescale_;
     unsigned int start = (unsigned int)(start_time * moov_time_scale + 0.5f);
     unsigned int end = (unsigned int)(end_time * moov_time_scale + 0.5f);
 

@@ -611,7 +611,7 @@ extern trak_t *trak_init() {
 }
 
 extern unsigned int trak_bitrate(trak_t const *trak) {
-  long trak_time_scale = trak->mdia_->mdhd_->timescale_;
+  uint32_t trak_time_scale = trak->mdia_->mdhd_->timescale_;
   uint64_t duration;
   unsigned int bps;
 

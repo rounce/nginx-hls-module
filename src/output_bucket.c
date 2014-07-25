@@ -1,9 +1,6 @@
 /*******************************************************************************
  output_bucket.c - A library for writing memory / file buckets.
 
- Copyright (C) 2007-2009 CodeShop B.V.
- http://www.code-shop.com
-
  For licensing see the LICENSE file
 ******************************************************************************/
 

@@ -1,18 +1,11 @@
 /*******************************************************************************
  moov.h - A library for splitting Quicktime/MPEG4 files.
 
- Copyright (C) 2007-2009 CodeShop B.V.
- http://www.code-shop.com
-
  For licensing see the LICENSE file
 ******************************************************************************/
 
 #ifndef MOOV_H_AKW
 #define MOOV_H_AKW
-
-// NOTE: don't include stdio.h (for FILE) or sys/types.h (for off_t).
-// nginx redefines _FILE_OFFSET_BITS and off_t will have different sizes
-// depending on include order
 
 #include "mod_streaming_export.h"
 

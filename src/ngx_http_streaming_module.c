@@ -1,24 +1,7 @@
 /*******************************************************************************
- ngx_http_h264_streaming_module.c
+ ngx_http_streaming - An Nginx module for streaming MPEG4 files
 
- mod_h264_streaming - An Nginx module for streaming Quicktime/MPEG4 files.
-
- Copyright (C) 2008-2009 CodeShop B.V.
-
- Licensing
- The Streaming Module is licened under a Creative Commons License. It
- allows you to use, modify and redistribute the module, but only for
- *noncommercial* purposes. For corporate use, please apply for a
- commercial license.
-
- Creative Commons License:
- http://creativecommons.org/licenses/by-nc-sa/3.0/
-
- Commercial License for H264 Streaming Module:
- http://h264.code-shop.com/trac/wiki/Mod-H264-Streaming-License-Version2
-
- Commercial License for Smooth Streaming Module:
- http://smoothstreaming.code-shop.com/trac/wiki/Mod-Smooth-Streaming-License
+ For licensing see the LICENSE file
 ******************************************************************************/
 
 #include <nginx.h>
@@ -31,29 +14,12 @@
 #include "output_ts.h"
 #include "moov.h"
 #include "output_bucket.h"
-#ifdef BUILDING_H264_STREAMING
-#include "output_mp4.h"
-#define X_MOD_STREAMING_KEY X_MOD_H264_STREAMING_KEY
-#define X_MOD_STREAMING_VERSION X_MOD_H264_STREAMING_VERSION
-#endif
-#ifdef BUILDING_SMOOTH_STREAMING
-#define X_MOD_STREAMING_KEY X_MOD_SMOOTH_STREAMING_KEY
-#define X_MOD_STREAMING_VERSION X_MOD_SMOOTH_STREAMING_VERSION
-#endif
-#ifdef BUILDING_FLV_STREAMING
-#include "output_flv.h"
-#endif
 
 static char *ngx_streaming(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 static ngx_command_t ngx_streaming_commands[] = {
   {
-#ifdef BUILDING_H264_STREAMING
-    ngx_string("mp4"),
-#endif
-#ifdef BUILDING_SMOOTH_STREAMING
     ngx_string("hls"),
-#endif
     NGX_HTTP_LOC_CONF | NGX_CONF_NOARGS,
     ngx_streaming,
     0,
@@ -77,12 +43,7 @@ static ngx_http_module_t ngx_streaming_module_ctx = {
   NULL                            /* merge location configuration */
 };
 
-#ifdef BUILDING_H264_STREAMING
-ngx_module_t ngx_http_h264_streaming_module =
-#endif
-#ifdef BUILDING_SMOOTH_STREAMING
-  ngx_module_t ngx_http_smooth_streaming_module =
-#endif
+ngx_module_t ngx_http_streaming_module =
 {
   NGX_MODULE_V1,
   &ngx_streaming_module_ctx,     /* module context */
@@ -266,10 +227,10 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
 
     h->hash = 1;
 
-    h->key.len = sizeof(X_MOD_STREAMING_KEY) - 1;
-    h->key.data = (u_char *)X_MOD_STREAMING_KEY;
-    h->value.len = sizeof(X_MOD_STREAMING_VERSION) - 1;
-    h->value.data = (u_char *)X_MOD_STREAMING_VERSION;
+    h->key.len = sizeof(X_MOD_HLS_KEY) - 1;
+    h->key.data = (u_char *)X_MOD_HLS_KEY;
+    h->value.len = sizeof(X_MOD_HLS_VERSION) - 1;
+    h->value.data = (u_char *)X_MOD_HLS_VERSION;
 
     rc = ngx_http_send_header(r);
 

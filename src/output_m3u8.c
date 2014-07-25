@@ -1,9 +1,6 @@
 /*******************************************************************************
  output_m3u8.c - A library for writing M3U8 playlists.
 
- Copyright (C) 2009 CodeShop B.V.
- http://www.code-shop.com
-
  For licensing see the LICENSE file
 ******************************************************************************/
 
@@ -30,8 +27,6 @@ extern int mp4_create_m3u8(struct mp4_context_t *mp4_context,
   u_char *buffer = (u_char *)ngx_palloc(mp4_context->r->pool, 1024 * 256);
   u_char *p = buffer;
   char extra[100] = "";
-  //if(options->fragment_track_id) p_extra = ngx_sprintf(p_extra, "&audio=%ud", options->fragment_track_id);
-  //if(options->hash) p_extra = ngx_sprintf(p_extra, "&hash=%s", options->hash);
   if(mp4_context->r->args.data) {
     extra[0] = '&';
     strncpy(extra + 1, (const char *)mp4_context->r->args.data, mp4_context->r->args.len < 100 ? mp4_context->r->args.len : 100);
@@ -43,14 +38,11 @@ extern int mp4_create_m3u8(struct mp4_context_t *mp4_context,
   strcpy(filename, (const char *)(mp4_context->file->name.data + mp4_context->root));
   char *ext = strrchr(filename, '.');
   *ext = 0;
-  //strcpy(ext, ".m3u8");
 
   if(!moov_build_index(mp4_context, mp4_context->moov)) return 0;
   moov_t const *moov = mp4_context->moov;
 
   // http://developer.apple.com/library/ios/#technotes/tn2288/_index.html
-  // http://tools.ietf.org/html/draft-pantos-http-live-streaming-08
-  unsigned int audio_tracks = 0;
   /*  if(!options->fragment_track_id) {
       unsigned int track_id;
       for(track_id = 0; track_id < moov->tracks_; ++track_id) {
@@ -60,8 +52,6 @@ extern int mp4_create_m3u8(struct mp4_context_t *mp4_context,
         unsigned int i = 0;
         for(track_id = 0; track_id < moov->tracks_; ++track_id) {
           if(moov->traks_[track_id]->mdia_->hdlr_->handler_type_ == FOURCC('s', 'o', 'u', 'n')) {
-  //          p = ngx_sprintf(p, "#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID=\"track\",NAME=\"%d\",AUTOSELECT=YES,DEFAULT=%s,LANGUAGE=\"%s\",URI=\"%s?audio=%d%s\"\n",
-  //                          track_id, !i ? "YES" : "NO", i != audio_tracks - 1 ? "rus" : "eng",
             p = ngx_sprintf(p, "#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID=\"track\",NAME=\"%d\",DEFAULT=%s,URI=\"%s?audio=%d%s\"\n",
                             track_id, i ? "YES" : "NO",
                             filename, track_id, extra);
@@ -75,38 +65,36 @@ extern int mp4_create_m3u8(struct mp4_context_t *mp4_context,
       }
     }*/
 
-  if(audio_tracks < 2) {
-    trak_t const *trak = moov->traks_[0];
-    samples_t *cur = trak->samples_;
-    samples_t *prev = cur;
-    samples_t *last = trak->samples_ + trak->samples_size_ + 1;
+  trak_t const *trak = moov->traks_[0];
+  samples_t *cur = trak->samples_;
+  samples_t *prev = cur;
+  samples_t *last = trak->samples_ + trak->samples_size_ + 1;
 
-    p = ngx_sprintf(p, "#EXT-X-TARGETDURATION:%ud\n", options->seconds ? options->seconds + 3 : 4);
-    p = ngx_sprintf(p, "#EXT-X-MEDIA-SEQUENCE:0\n");
-    p = ngx_sprintf(p, "#EXT-X-VERSION:4\n");
+  p = ngx_sprintf(p, "#EXT-X-TARGETDURATION:%ud\n", options->seconds ? options->seconds + 3 : 4);
+  p = ngx_sprintf(p, "#EXT-X-MEDIA-SEQUENCE:0\n");
+  p = ngx_sprintf(p, "#EXT-X-VERSION:4\n");
 
-    uint32_t i = 0, prev_i = 0;
-    while(cur != last) {
-      if(!cur->is_smooth_ss_) {
-        ++cur;
-        continue;
-      }
-
-      if(prev != cur) {
-        float duration = (float)((cur->pts_ - prev->pts_) / (float)trak->mdia_->mdhd_->timescale_) + 0.0005;
-        if(duration >= (float)options->seconds || cur + 1 == last) {
-          p = ngx_sprintf(p, "#EXTINF:%.3f,\n", duration);
-          p = ngx_sprintf(p, "%s.hls?video=%uD%s\n", filename, prev_i, extra);
-          prev = cur;
-          prev_i = i;
-          ++result;
-        }
-      }
-      ++i;
+  uint32_t i = 0, prev_i = 0;
+  while(cur != last) {
+    if(!cur->is_smooth_ss_) {
       ++cur;
+      continue;
     }
-    p = ngx_sprintf(p, "#EXT-X-ENDLIST\n");
+
+    if(prev != cur) {
+      float duration = (float)((cur->pts_ - prev->pts_) / (float)trak->mdia_->mdhd_->timescale_) + 0.0005;
+      if(duration >= (float)options->seconds || cur + 1 == last) {
+        p = ngx_sprintf(p, "#EXTINF:%.3f,\n", duration);
+        p = ngx_sprintf(p, "%s.hls?video=%uD%s\n", filename, prev_i, extra);
+        prev = cur;
+        prev_i = i;
+        ++result;
+      }
+    }
+    ++i;
+    ++cur;
   }
+  p = ngx_sprintf(p, "#EXT-X-ENDLIST\n");
 
   bucket_insert(bucket, buffer, p - buffer);
   ngx_pfree(mp4_context->r->pool, buffer);

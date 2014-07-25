@@ -11,8 +11,8 @@
 #define MOD_STREAMING_DLL_LOCAL
 #endif
 
-#define X_MOD_SMOOTH_STREAMING_KEY "mod_hls"
-#define X_MOD_SMOOTH_STREAMING_VERSION "version=0.9"
+#define X_MOD_HLS_KEY "mod_hls"
+#define X_MOD_HLS_VERSION "version=0.9"
 
 #endif // MOD_STREAMING_EXPORT_H_AKW
 

@@ -1,9 +1,6 @@
 /*******************************************************************************
  moov.c - A library for splitting Quicktime/MPEG4.
 
- Copyright (C) 2007-2009 CodeShop B.V.
- http://www.code-shop.com
-
  For licensing see the LICENSE file
 ******************************************************************************/
 
@@ -23,12 +20,6 @@
 #include "mp4_io.h"
 #include "mp4_reader.h"
 #include "output_bucket.h"
-#if defined(BUILDING_H264_STREAMING) || defined(BUILDING_MP4SPLIT)
-#include "output_mp4.h"
-#endif
-#if defined(BUILDING_FLV_STREAMING) || defined(BUILDING_MP4SPLIT)
-#include "output_flv.h"
-#endif
 
 /*
   The QuickTime File Format PDF from Apple:

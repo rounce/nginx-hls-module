@@ -1,9 +1,6 @@
 /*******************************************************************************
  output_ts.c - A library for reading Fragmented MPEG4 and writing MPEG TS
 
- Copyright (C) 2009 CodeShop B.V.
- http://www.code-shop.com
-
  For licensing see the LICENSE file
 ******************************************************************************/
 
@@ -174,7 +171,7 @@ struct mpegts_stream_t {
   uint64_t payload_pts_;
   uint8_t payload_[MAX_PES_PAYLOAD_SIZE];
 
-  unsigned int packets_;
+  u_int packets_;
   sample_entry_t const *sample_entry_;
 };
 typedef struct mpegts_stream_t mpegts_stream_t;
@@ -372,13 +369,12 @@ static void write_header(mpegts_muxer_t *mpegts_muxer) {
 static int packetized_packets(mpegts_stream_t *mpegts_stream,
                               uint64_t dts, uint64_t pts,
                               unsigned int payload_size) {
-  int write_pcr = mpegts_stream->pid_ == mpegts_stream->muxer_->pcr_pid_;
-  int write_discontinuity_indicator = mpegts_stream->packets_ == 0;
+  u_int write_discontinuity_indicator = mpegts_stream->packets_ == 0;
 
   // calculate overhead
-  unsigned int once = 0;
+  u_int once = 0;
 
-  if(write_pcr) once += 8;
+  if(mpegts_stream->pid_ == mpegts_stream->muxer_->pcr_pid_) once += 8;
   else if(write_discontinuity_indicator) once += 2;
 
   // PES header start code, stream id
@@ -401,9 +397,9 @@ static void write_packet(mpegts_stream_t *mpegts_stream,
   unsigned char *buf;
   unsigned char *q;
 
-  int write_discontinuity_indicator = mpegts_stream->packets_ == 0;
-  int is_start = 1;
-  int packets;
+  u_int write_discontinuity_indicator = mpegts_stream->packets_ == 0;
+  u_int is_start = 1;
+  u_int packets;
 
   mpegts_muxer_t *mpegts_muxer = mpegts_stream->muxer_;
 
@@ -471,15 +467,12 @@ static void write_packet(mpegts_stream_t *mpegts_stream,
       *q++ = (unsigned char)(pcr >> 1);
       *q++ = (unsigned char)((pcr & 1) << 7);
       *q++ = 0;
-    }
-#if 1
-    else if(write_discontinuity_indicator) {
+    } else if(write_discontinuity_indicator) {
       // Adaptation Field Length
       *q++ = 1;
       *q++ = 0x80;
       write_discontinuity_indicator = 0;
     }
-#endif
 
     if(write_discontinuity_indicator) {
       buf[5] |= 0x80;
@@ -658,7 +651,6 @@ static void write_video_packet(mpegts_stream_t *mpegts_stream,
   }
 
   if(convert_to_nal(first, last, p)) {
-    p += last - first;
     write_packet(mpegts_stream, bucket, dts, pts, buf, size);
   }
 

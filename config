@@ -1,9 +1,9 @@
-ngx_addon_name=ngx_http_smooth_streaming_module
-HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES ngx_http_smooth_streaming_module"
+ngx_addon_name=ngx_http_streaming_module
+HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES ngx_http_streaming_module"
 CFLAGS="$CFLAGS -ggdb -D_DEBUG -D_LARGEFILE_SOURCE"
 CORE_LIBS="$CORE_LIBS -lexpat -lcurl"
 
-SMOOTH_STREAMING_MODULE_SOURCES="$ngx_addon_dir/src/ngx_http_smooth_streaming_module.c \
+STREAMING_MODULE_SOURCES="$ngx_addon_dir/src/ngx_http_streaming_module.c \
 			         $ngx_addon_dir/src/moov.c \
 			         $ngx_addon_dir/src/mp4_io.c \
 			         $ngx_addon_dir/src/mp4_reader.c \
@@ -12,7 +12,7 @@ SMOOTH_STREAMING_MODULE_SOURCES="$ngx_addon_dir/src/ngx_http_smooth_streaming_mo
 			         $ngx_addon_dir/src/view_count.c \
 			         $ngx_addon_dir/src/output_m3u8.c"
 
-for streaming_module_source in $SMOOTH_STREAMING_MODULE_SOURCES
+for streaming_module_source in $STREAMING_MODULE_SOURCES
 do
   already_included=NO
   for ngx_addon_src in $NGX_ADDON_SRCS

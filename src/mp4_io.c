@@ -1,9 +1,6 @@
 /*******************************************************************************
  mp4_io.c - A library for general MPEG4 I/O.
 
- Copyright (C) 2007-2009 CodeShop B.V.
- http://www.code-shop.com
-
  For licensing see the LICENSE file
 ******************************************************************************/
 

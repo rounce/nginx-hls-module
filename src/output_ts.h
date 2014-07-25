@@ -1,9 +1,6 @@
 /*******************************************************************************
  output_ts.h - A library for reading and writing Fragmented MPEG4.
 
- Copyright (C) 2009 CodeShop B.V.
- http://www.code-shop.com
-
  For licensing see the LICENSE file
 ******************************************************************************/
 

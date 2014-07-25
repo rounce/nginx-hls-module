@@ -1,9 +1,6 @@
 /*******************************************************************************
  output_m3u8.c - A library for writing M3U8 playlists.
 
- Copyright (C) 2009 CodeShop B.V.
- http://www.code-shop.com
-
  For licensing see the LICENSE file
 ******************************************************************************/
 

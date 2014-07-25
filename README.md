@@ -2,13 +2,13 @@
 
 Smooth Streaming Module fork
 
-The mod_hls module ingests the mp4 file, packages one into fragments, and delivers the fragments to iOS clients in real-time.
+The module ingests the mp4 file, packages one into fragments, and delivers the fragments to iOS clients in real-time.
 
 ### Build
 
 cd to NGINX source directory & run this:
 
-    ./configure --add-module=/path/to/nginx-hts-module
+    ./configure --add-module=/path/to/nginx-hls-module
     make
     make install
 

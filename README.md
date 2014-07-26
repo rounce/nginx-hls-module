@@ -19,7 +19,7 @@ cd to NGINX source directory & run this:
             listen 80;
             rewrite ^(.*)\.mp4$ $1.m3u8 last;
 
-            location ~ \.(m3u8|hls)$ {
+            location ~ \.(m3u8|ts)$ {
                 hls;
             }
         }

@@ -85,7 +85,7 @@ extern int mp4_create_m3u8(struct mp4_context_t *mp4_context,
       float duration = (float)((cur->pts_ - prev->pts_) / (float)trak->mdia_->mdhd_->timescale_) + 0.0005;
       if(duration >= (float)options->seconds || cur + 1 == last) {
         p = ngx_sprintf(p, "#EXTINF:%.3f,\n", duration);
-        p = ngx_sprintf(p, "%s.hls?video=%uD%s\n", filename, prev_i, extra);
+        p = ngx_sprintf(p, "%s.ts?video=%uD%s\n", filename, prev_i, extra);
         prev = cur;
         prev_i = i;
         ++result;

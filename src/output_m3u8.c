@@ -52,8 +52,6 @@ extern int mp4_create_m3u8(struct mp4_context_t *mp4_context,
         unsigned int i = 0;
         for(track_id = 0; track_id < moov->tracks_; ++track_id) {
           if(moov->traks_[track_id]->mdia_->hdlr_->handler_type_ == FOURCC('s', 'o', 'u', 'n')) {
-  //          p = ngx_sprintf(p, "#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID=\"track\",NAME=\"%d\",AUTOSELECT=YES,DEFAULT=%s,LANGUAGE=\"%s\",URI=\"%s?audio=%d%s\"\n",
-  //                          track_id, !i ? "YES" : "NO", i != audio_tracks - 1 ? "rus" : "eng",
             p = ngx_sprintf(p, "#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID=\"track\",NAME=\"%d\",DEFAULT=%s,URI=\"%s?audio=%d%s\"\n",
                             track_id, i ? "YES" : "NO",
                             filename, track_id, extra);

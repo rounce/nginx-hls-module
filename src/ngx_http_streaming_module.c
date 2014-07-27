@@ -22,10 +22,10 @@ typedef struct {
 } hls_conf_t;
 
 static void *ngx_http_hls_create_conf(ngx_conf_t *cf);
+static char *ngx_http_hls_merge_conf(ngx_conf_t *cf, void *parent, void *child);
 
 static ngx_command_t ngx_streaming_commands[] = {
-  {
-    ngx_string("hls"),
+  { ngx_string("hls"),
     NGX_HTTP_LOC_CONF | NGX_CONF_NOARGS,
     ngx_streaming,
     0,
@@ -51,12 +51,11 @@ static ngx_http_module_t ngx_streaming_module_ctx = {
   NULL,                          /* create server configuration */
   NULL,                          /* merge server configuration */
 
-  ngx_http_hls_create_conf,       /* create location configuration */
-  NULL                            /* merge location configuration */
+  ngx_http_hls_create_conf,      /* create location configuration */
+  ngx_http_hls_merge_conf        /* merge location configuration */
 };
 
-ngx_module_t ngx_http_streaming_module =
-{
+ngx_module_t ngx_http_streaming_module = {
   NGX_MODULE_V1,
   &ngx_streaming_module_ctx,     /* module context */
   ngx_streaming_commands,        /* module directives */
@@ -71,8 +70,7 @@ ngx_module_t ngx_http_streaming_module =
   NGX_MODULE_V1_PADDING
 };
 
-static void *ngx_http_hls_create_conf(ngx_conf_t *cf)
-{
+static void *ngx_http_hls_create_conf(ngx_conf_t *cf) {
     hls_conf_t *conf;
 
     conf = ngx_pcalloc(cf->pool, sizeof(hls_conf_t));
@@ -92,6 +90,16 @@ static void *ngx_http_hls_create_conf(ngx_conf_t *cf)
 
     return conf;
 }
+
+static char *ngx_http_hls_merge_conf(ngx_conf_t *cf, void *parent, void *child) {
+    hls_conf_t *prev = parent;
+    hls_conf_t *conf = child;
+
+    ngx_conf_merge_uint_value(conf->length, prev->length, 0);
+
+    return NGX_CONF_OK;
+}
+
 
 static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
   u_char                      *last;
@@ -233,7 +241,7 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
     }
     r->allow_ranges = 0;
   } else {
-    result = output_ts(mp4_context, bucket, (struct mp4_split_options_t *)options);
+    result = output_ts(mp4_context, bucket, options);
     if(!options || !result) {
       mp4_close(mp4_context);
       ngx_log_error(NGX_LOG_ALERT, nlog, ngx_errno, "output_ts failed");

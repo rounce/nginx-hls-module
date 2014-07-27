@@ -172,7 +172,7 @@ mp4_split_options_t *mp4_split_options_init(ngx_http_request_t *r) {
   options->fragment_bitrate = 0;
   options->fragment_track_id = 0;
   options->fragment_start = 0;
-  options->seconds = 8;
+  options->length = 8;
   options->hash = NULL;
 
   return options;
@@ -225,8 +225,8 @@ int mp4_split_options_set(ngx_http_request_t *r, struct mp4_split_options_t *opt
               options->fragment_start = atoi64(valz);
             } else if(!strncmp("audio", key, key_len)) {
               options->fragment_track_id = atoi64(valz);
-            } else if(!strncmp("seconds", key, key_len)) {
-              options->seconds = (unsigned int)atoi64(valz);
+            } else if(!strncmp("length", key, key_len)) {
+              options->length = (unsigned int)atoi64(valz);
             } else if(!strncmp("hash", key, key_len)) {
               if(val_len > 16) {val_len = 16; valz[val_len] = 0;}
               options->hash = ngx_pcalloc(r->pool, val_len + 1);

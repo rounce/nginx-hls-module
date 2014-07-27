@@ -761,7 +761,7 @@ int output_ts(struct mp4_context_t *mp4_context, struct bucket_t *bucket, struct
       if(end == 1 && last_track < max_fragment_size) {
         fragment[last_track].trak = moov->traks_[track_id];
         fragment[last_track].first = sample;
-        fragment[last_track].last = get_next(trak, sample, last, options->seconds, &last_chunk);
+        fragment[last_track].last = get_next(trak, sample, last, options->length, &last_chunk);
         //MP4_INFO("fragment begin %ld end %ld", sample->pts_, fragment[last_track].last->pts_);
         ++last_track;
       }

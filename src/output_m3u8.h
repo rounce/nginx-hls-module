@@ -19,7 +19,7 @@ extern "C" {
 
   MOD_STREAMING_DLL_LOCAL extern
   int mp4_create_m3u8(struct mp4_context_t *mp4_context,
-                      struct bucket_t *bucket, struct mp4_split_options_t const *options);
+                      struct bucket_t *bucket, unsigned int length);
 
 #ifdef __cplusplus
 } /* extern C definitions */

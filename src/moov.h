@@ -28,16 +28,17 @@ extern "C" {
   };
   typedef enum input_format_t input_format_t;
 
+  //typedef struct {
   struct mp4_split_options_t {
     float start;
     uint64_t start_integer;
     float end;
     int fragments;
     enum input_format_t input_format;
-    unsigned int fragment_bitrate;
-    unsigned int fragment_track_id;
+    uint32_t fragment_bitrate;
+    uint32_t fragment_track_id;
     uint64_t fragment_start;
-    unsigned int seconds;
+    uint32_t length;
     char *hash;
   };
   typedef struct mp4_split_options_t mp4_split_options_t;

@@ -17,6 +17,12 @@
 
 static char *ngx_streaming(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
+typedef struct {
+  ngx_uint_t length;
+} hls_conf_t;
+
+static void *ngx_http_hls_create_conf(ngx_conf_t *cf);
+
 static ngx_command_t ngx_streaming_commands[] = {
   {
     ngx_string("hls"),
@@ -26,6 +32,12 @@ static ngx_command_t ngx_streaming_commands[] = {
     0,
     NULL
   },
+  { ngx_string("hls_length"),
+    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+    ngx_conf_set_num_slot,
+    NGX_HTTP_LOC_CONF_OFFSET,
+    offsetof(hls_conf_t, length),
+    NULL },
   ngx_null_command
 };
 
@@ -39,7 +51,7 @@ static ngx_http_module_t ngx_streaming_module_ctx = {
   NULL,                          /* create server configuration */
   NULL,                          /* merge server configuration */
 
-  NULL,                           /* create location configuration */
+  ngx_http_hls_create_conf,       /* create location configuration */
   NULL                            /* merge location configuration */
 };
 
@@ -58,6 +70,28 @@ ngx_module_t ngx_http_streaming_module =
   NULL,                          /* exit master */
   NGX_MODULE_V1_PADDING
 };
+
+static void *ngx_http_hls_create_conf(ngx_conf_t *cf)
+{
+    hls_conf_t *conf;
+
+    conf = ngx_pcalloc(cf->pool, sizeof(hls_conf_t));
+    if (conf == NULL) {
+        return NULL;
+    }
+
+    /*
+     * set by ngx_pcalloc():
+     *
+     *     conf->hash = { NULL };
+     *     conf->server_names = 0;
+     *     conf->keys = NULL;
+     */
+
+    conf->length = NGX_CONF_UNSET;
+
+    return conf;
+}
 
 static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
   u_char                      *last;
@@ -80,6 +114,9 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
     return rc;
 
   mp4_split_options_t *options = mp4_split_options_init(r);
+  hls_conf_t *conf = ngx_http_get_module_loc_conf(r, ngx_http_streaming_module);
+  options->length = conf->length;
+
   if(r->args.len && !mp4_split_options_set(r, options, (const char *)r->args.data, r->args.len)) {
     mp4_split_options_exit(r, options);
     return NGX_DECLINED;
@@ -104,10 +141,11 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
     if(ngx_strstr(path.data, "m3u8")) m3u8 = 1;
     char *ext = strrchr((const char *)path.data, '.');
     strcpy(ext, ".mp4");
+    ngx_uint_t path_len = ((u_char *)ext - path.data) + 4;
+    // ngx_open_and_stat_file in ngx_open_cached_file expects the name to be zero-terminated.
+    path.data[path_len] = '\0';
   }
 
-  // ngx_open_and_stat_file in ngx_open_cached_file expects the name to be zero-terminated.
-  path.data[path.len] = '\0';
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, nlog, 0, "http mp4 filename: \"%s\"", path.data);
 
@@ -188,21 +226,20 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
   }*/
 
   if(m3u8) {
-    if((result = mp4_create_m3u8(mp4_context, bucket, options))) {
+    if((result = mp4_create_m3u8(mp4_context, bucket, options->length))) {
       char action[50];
       sprintf(action, "ios_playlist&segments=%d", result);
       view_count(mp4_context, (char *)path.data, options ? options->hash : NULL, action);
     }
     r->allow_ranges = 0;
   } else {
-    result = output_ts(mp4_context, bucket, options);
+    result = output_ts(mp4_context, bucket, (struct mp4_split_options_t *)options);
     if(!options || !result) {
       mp4_close(mp4_context);
       ngx_log_error(NGX_LOG_ALERT, nlog, ngx_errno, "output_ts failed");
       return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     char action[50] = "ios_view";
-    //if(options->hash) ngx_log_error(NGX_LOG_ALERT, nlog, ngx_errno, "test hash %s", options->hash);
     view_count(mp4_context, (char *)path.data, options->hash, action);
     r->allow_ranges = 1;
   }

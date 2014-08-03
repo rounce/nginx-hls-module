@@ -123,7 +123,7 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
 
   mp4_split_options_t *options = mp4_split_options_init(r);
   hls_conf_t *conf = ngx_http_get_module_loc_conf(r, ngx_http_streaming_module);
-  options->length = conf->length;
+  if(conf->length) options->length = conf->length;
 
   if(r->args.len && !mp4_split_options_set(r, options, (const char *)r->args.data, r->args.len)) {
     mp4_split_options_exit(r, options);

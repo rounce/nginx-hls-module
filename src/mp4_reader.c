@@ -572,7 +572,6 @@ stsd_parse_soun(mp4_context_t const *mp4_context,
   compression_id = read_16(buffer + 20);
   packet_size = read_16(buffer + 22);
 
-  // samplerate = {timescale of media} << 16
   sample_entry->samplerate_hi_ = read_16(buffer + 24);
   sample_entry->samplerate_lo_ = read_16(buffer + 26);
 
@@ -1616,13 +1615,11 @@ static int add_fragmented_samples(mp4_context_t const *mp4_context,
   trun = traf->trun_;
   for(; trun != NULL; trun = trun->next_) {
     tfhd_t const *tfhd = traf->tfhd_;
-//    trun_t const* trun = traf->trun_;
 
     unsigned int i;
     unsigned int s = trak->samples_size_;
 
     uint64_t data_offset = tfhd->base_data_offset_ + trun->data_offset_;
-//    int64_t pts = trak->fragment_pts_;  // trak->mdia_->mdhd_->duration_;
     int64_t pts = trak->mdia_->mdhd_->duration_;
     unsigned int cto = 0;
 
@@ -1635,7 +1632,6 @@ static int add_fragmented_samples(mp4_context_t const *mp4_context,
           pts = elst_table->media_time_ != -1 ? elst_table->media_time_
                 : (int64_t)elst_table->segment_duration_;
           trak->mdia_->mdhd_->duration_ = pts;
-//            trak->fragment_pts_ = pts;
         }
       }
     }
@@ -1649,7 +1645,6 @@ static int add_fragmented_samples(mp4_context_t const *mp4_context,
     for(i = 0; i != trun->sample_count_; ++i) {
       samples_t *sample = &trak->samples_[s + i];
       trun_table_t const *trun_table = &trun->table_[i];
-      unsigned int is_difference_sample = (trun_table->sample_flags_ >> 16) & 1;
 
       cto = trun_table->sample_composition_time_offset_;
 
@@ -1657,9 +1652,7 @@ static int add_fragmented_samples(mp4_context_t const *mp4_context,
       sample->size_ = trun_table->sample_size_;
       sample->pos_ = data_offset;
       sample->cto_ = trun_table->sample_composition_time_offset_;
-//      sample->is_ss_ = i == 0 ? 1 : 0;
       sample->is_smooth_ss_ = i == 0 ? 1 : 0;
-      sample->is_ss_ = is_difference_sample ? 0 : 1;
 
 #if 0
       {
@@ -1679,7 +1672,6 @@ static int add_fragmented_samples(mp4_context_t const *mp4_context,
 
       // add fragment duration to track duration
       trak->mdia_->mdhd_->duration_ += trun_table->sample_duration_;
-//      trak->fragment_pts_ += trun_table->sample_duration_;
     }
 
     // write end pts
@@ -1687,7 +1679,6 @@ static int add_fragmented_samples(mp4_context_t const *mp4_context,
     trak->samples_[s + i].size_ = 0;
     trak->samples_[s + i].pos_ = data_offset;
     trak->samples_[s + i].cto_ = cto;
-    trak->samples_[s + i].is_ss_ = 1;
     trak->samples_[s + i].is_smooth_ss_ = 1;
   }
 
@@ -1785,25 +1776,12 @@ static void *tfhd_read(mp4_context_t const *mp4_context,
   atom->track_id_ = read_32(buffer + 4);
   buffer += 8;
 
-//  trex_t trex_default;
-//  trex_default.default_sample_description_index_ = 1;
-//  trex_default.default_sample_duration_ = 0;
-//  trex_default.default_sample_size_ = 0;
-//  trex_default.default_sample_flags_ = 0;
-
-//  if(mvex == NULL)
-//  {
-//    trex = &trex_default;
-  //}
-//  else
-//  {
   for(i = 0; i != mvex->tracks_; ++i) {
     if(mvex->trexs_[i]->track_id_ == atom->track_id_) {
       trex = mvex->trexs_[i];
       break;
     }
   }
-//  }
 
   if(trex == NULL) {
     MP4_ERROR("tfhd: trex not found (track_id=%u)\n", atom->track_id_);
@@ -2110,13 +2088,8 @@ static int trak_build_index(mp4_context_t const *mp4_context, trak_t *trak) {
       trak->samples_[s].is_ss_ = 1;
       trak->samples_[s].is_smooth_ss_ = 1;
     }
-  } else {
-    for(i = 0; i != trak->samples_size_; ++i) {
-      trak->samples_[i].is_ss_ = 1;
-    }
   }
   // write end ss
-  trak->samples_[trak->samples_size_].is_ss_ = 1;
   trak->samples_[trak->samples_size_].is_smooth_ss_ = 1;
 
   return 1;

@@ -522,7 +522,6 @@ extern "C" {
     uint64_t pos_;                // byte offset
     unsigned int cto_;            // composition time offset
 
-    unsigned int is_ss_: 1;       // sync sample
     unsigned int is_smooth_ss_: 1; // sync sample for smooth streaming
   };
   typedef struct samples_t samples_t;

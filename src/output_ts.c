@@ -580,7 +580,6 @@ static void write_packet(mpegts_stream_t *mpegts_stream,
       }
 #endif
 
-      //if(payload_size - len < 0 || (u_int)(buf + TS_PACKET_SIZE) > out_size) break; // sanity check
       memcpy(buf + TS_PACKET_SIZE - len, payload, len);
       payload += len;
       payload_size -= len;
@@ -782,6 +781,7 @@ int output_ts(struct mp4_context_t *mp4_context, struct bucket_t *bucket, struct
   for(i = 0; i < fragment_size; ++i) {
     if(fragment[i].trak == NULL) continue;
     samples_t *next = fragment[i].first;
+    // convert time values to 90KHz clock
     while(1) {
       next->pts_ = trak_time_to_moov_time(next->pts_, 90000, fragment[i].trak->mdia_->mdhd_->timescale_);
       next->cto_ = trak_time_to_moov_time(next->cto_, 90000, fragment[i].trak->mdia_->mdhd_->timescale_);
@@ -838,7 +838,6 @@ int output_ts(struct mp4_context_t *mp4_context, struct bucket_t *bucket, struct
       uint64_t min_dts = 0xFFFFFFFFFFFFFFFFULL;
       int new_order = order;
       for(i = 0; i < fragment_size; ++i) {
-        //if(fragment[i].trak != NULL && fragment[i].first != fragment[i].last && (order == -1 || !order || fragment[order].first->is_smooth_ss_ || fragment[order].first == fragment[order].last)) {
         if(fragment[i].trak != NULL && fragment[i].first != fragment[i].last) {
           if(min_dts > fragment[i].first->pts_) {
             min_dts = fragment[i].first->pts_;
@@ -852,7 +851,6 @@ int output_ts(struct mp4_context_t *mp4_context, struct bucket_t *bucket, struct
       if(order == -1) break;
       if(order > (int)max_fragment_size) break;
 
-      // convert time values to 90KHz clock
       uint64_t dts0 = fragment[order].first->pts_;
       uint64_t pts = fragment[order].first->pts_ + fragment[order].first->cto_;
 

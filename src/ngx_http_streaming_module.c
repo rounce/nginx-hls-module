@@ -8,12 +8,14 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
+#include <inttypes.h>
+#include "mp4_reader.h"
 #include "mp4_io.h"
-#include "output_m3u8.h"
-#include "view_count.h"
-#include "output_ts.h"
 #include "moov.h"
 #include "output_bucket.h"
+#include "view_count.h"
+#include "output_m3u8.h"
+#include "output_ts.h"
 
 static char *ngx_streaming(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 

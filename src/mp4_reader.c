@@ -2085,7 +2085,6 @@ static int trak_build_index(mp4_context_t const *mp4_context, trak_t *trak) {
   if(stss) {
     for(i = 0; i != stss->entries_; ++i) {
       uint32_t s = stss->sample_numbers_[i] - 1;
-      trak->samples_[s].is_ss_ = 1;
       trak->samples_[s].is_smooth_ss_ = 1;
     }
   }

@@ -140,7 +140,6 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
 
   ngx_log_t *nlog = r->connection->log;
 
-  path.len = last - path.data;
   u_int m3u8 = 0;
 
   struct bucket_t *bucket = bucket_init(r);
@@ -149,9 +148,9 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
     if(ngx_strstr(path.data, "m3u8")) m3u8 = 1;
     char *ext = strrchr((const char *)path.data, '.');
     strcpy(ext, ".mp4");
-    ngx_uint_t path_len = ((u_char *)ext - path.data) + 4;
+    path.len = ((u_char *)ext - path.data) + 4;
     // ngx_open_and_stat_file in ngx_open_cached_file expects the name to be zero-terminated.
-    path.data[path_len] = '\0';
+    path.data[path.len] = '\0';
   }
 
 

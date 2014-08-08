@@ -53,7 +53,7 @@ int mp4_create_m3u8(struct mp4_context_t *mp4_context,
   samples_t *prev = cur;
   samples_t *last = trak->samples_ + trak->samples_size_ + 1;
 
-  p = ngx_sprintf(p, "#EXT-X-TARGETDURATION:%ud\n", length);
+  p = ngx_sprintf(p, "#EXT-X-TARGETDURATION:%ud\n", length + 3);
   p = ngx_sprintf(p, "#EXT-X-MEDIA-SEQUENCE:0\n");
   p = ngx_sprintf(p, "#EXT-X-VERSION:4\n");
 

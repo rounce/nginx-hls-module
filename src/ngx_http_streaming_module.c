@@ -134,8 +134,7 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
 
   if(!options) return NGX_DECLINED;
 
-  last = ngx_http_map_uri_to_path(r, &path, &root, 0);
-  if(last == NULL) {
+  if(!ngx_http_map_uri_to_path(r, &path, &root, 1)) {
     mp4_split_options_exit(r, options);
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
   }

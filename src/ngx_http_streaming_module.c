@@ -104,7 +104,7 @@ static char *ngx_http_hls_merge_conf(ngx_conf_t *cf, void *parent, void *child) 
 
 
 static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
-  u_char                      *last;
+  //u_char                      *last;
   size_t                      root;
   ngx_int_t                   rc;
   ngx_uint_t                  level;

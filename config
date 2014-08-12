@@ -3,7 +3,6 @@ HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES ngx_http_streaming_module"
 CFLAGS="$CFLAGS -ggdb -D_DEBUG -D_LARGEFILE_SOURCE"
 
 STREAMING_MODULE_SOURCES="$ngx_addon_dir/src/ngx_http_streaming_module.c \
-				$ngx_addon_dir/src/moov.c \
 				$ngx_addon_dir/src/mp4_io.c \
 				$ngx_addon_dir/src/output_bucket.c \
 				$ngx_addon_dir/src/mp4_reader.c"

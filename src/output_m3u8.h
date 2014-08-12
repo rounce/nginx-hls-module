@@ -4,8 +4,8 @@
  For licensing see the LICENSE file
 ******************************************************************************/
 
-int mp4_create_m3u8(struct mp4_context_t *mp4_context,
-                           struct bucket_t *bucket, unsigned int length) {
+int mp4_create_m3u8(struct mp4_context_t *mp4_context, struct bucket_t *bucket) {
+  hls_conf_t *conf = ngx_http_get_module_loc_conf(mp4_context->r, ngx_http_streaming_module);
   int result = 0;
   u_char *buffer = (u_char *)ngx_palloc(mp4_context->r->pool, 1024 * 256);
   u_char *p = buffer;
@@ -17,8 +17,17 @@ int mp4_create_m3u8(struct mp4_context_t *mp4_context,
 
   p = ngx_sprintf(p, "#EXTM3U\n");
 
-  char *filename = (char *)ngx_palloc(mp4_context->r->pool, ngx_strlen(mp4_context->file->name.data) - mp4_context->root + 2);
-  strcpy(filename, (const char *)(mp4_context->file->name.data + mp4_context->root));
+  char *filename;
+  if(!conf->relative) {
+    filename = (char *)ngx_palloc(mp4_context->r->pool, ngx_strlen(mp4_context->file->name.data) + ngx_strlen(mp4_context->r->headers_in.server.data) - mp4_context->root + 7);
+    strcpy(filename, "http://");
+    strcat(filename, (const char *)(mp4_context->r->headers_in.server.data));
+    strcat(filename, (const char *)(mp4_context->file->name.data + mp4_context->root));
+  } else {
+    char *name = strrchr((const char *)mp4_context->file->name.data, '/') + 1;
+    filename = (char *)ngx_palloc(mp4_context->r->pool, name - (const char *)mp4_context->file->name.data);
+    strcpy(filename, (const char *)name);
+  }
   char *ext = strrchr(filename, '.');
   *ext = 0;
 
@@ -53,7 +62,7 @@ int mp4_create_m3u8(struct mp4_context_t *mp4_context,
   samples_t *prev = cur;
   samples_t *last = trak->samples_ + trak->samples_size_ + 1;
 
-  p = ngx_sprintf(p, "#EXT-X-TARGETDURATION:%ud\n", length + 3);
+  p = ngx_sprintf(p, "#EXT-X-TARGETDURATION:%ud\n", conf->length + 3);
   p = ngx_sprintf(p, "#EXT-X-MEDIA-SEQUENCE:0\n");
   p = ngx_sprintf(p, "#EXT-X-VERSION:4\n");
 
@@ -66,7 +75,7 @@ int mp4_create_m3u8(struct mp4_context_t *mp4_context,
 
     if(prev != cur) {
       float duration = (float)((cur->pts_ - prev->pts_) / (float)trak->mdia_->mdhd_->timescale_) + 0.0005;
-      if(duration >= (float)length || cur + 1 == last) {
+      if(duration >= (float)conf->length || cur + 1 == last) {
         p = ngx_sprintf(p, "#EXTINF:%.3f,\n", duration);
         p = ngx_sprintf(p, "%s.ts?video=%uD%s\n", filename, prev_i, extra);
         prev = cur;

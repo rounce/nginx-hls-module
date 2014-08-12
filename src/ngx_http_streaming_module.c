@@ -9,20 +9,13 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 #include <inttypes.h>
-#include "mp4_reader.h"
-#include "mp4_io.h"
-#include "moov.h"
-#include "output_bucket.h"
-#include "view_count.h"
-#include "output_m3u8.h"
-#include "output_ts.h"
-
-static char *ngx_streaming(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 typedef struct {
   ngx_uint_t length;
+  ngx_flag_t relative;
 } hls_conf_t;
 
+static char *ngx_streaming(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static void *ngx_http_hls_create_conf(ngx_conf_t *cf);
 static char *ngx_http_hls_merge_conf(ngx_conf_t *cf, void *parent, void *child);
 
@@ -39,6 +32,12 @@ static ngx_command_t ngx_streaming_commands[] = {
     ngx_conf_set_num_slot,
     NGX_HTTP_LOC_CONF_OFFSET,
     offsetof(hls_conf_t, length),
+    NULL },
+  { ngx_string("hls_relative"),
+    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+    ngx_conf_set_flag_slot,
+    NGX_HTTP_LOC_CONF_OFFSET,
+    offsetof(hls_conf_t, relative),
     NULL },
   ngx_null_command
 };
@@ -72,6 +71,14 @@ ngx_module_t ngx_http_streaming_module = {
   NGX_MODULE_V1_PADDING
 };
 
+#include "mp4_reader.h"
+#include "mp4_io.h"
+#include "moov.h"
+#include "output_bucket.h"
+#include "view_count.h"
+#include "output_m3u8.h"
+#include "output_ts.h"
+
 static void *ngx_http_hls_create_conf(ngx_conf_t *cf) {
     hls_conf_t *conf;
 
@@ -88,7 +95,8 @@ static void *ngx_http_hls_create_conf(ngx_conf_t *cf) {
      *     conf->keys = NULL;
      */
 
-    conf->length = NGX_CONF_UNSET;
+    conf->length = NGX_CONF_UNSET_UINT;
+    conf->relative = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -97,14 +105,20 @@ static char *ngx_http_hls_merge_conf(ngx_conf_t *cf, void *parent, void *child) 
     hls_conf_t *prev = parent;
     hls_conf_t *conf = child;
 
-    ngx_conf_merge_uint_value(conf->length, prev->length, 0);
+    ngx_conf_merge_uint_value(conf->length, prev->length, 8);
+    ngx_conf_merge_value(conf->relative, prev->relative, 1);
+
+    if(conf->length < 1) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+            "ngx_length must be equal or more than 1");
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
 }
 
 
 static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
-  u_char                      *last;
   size_t                      root;
   ngx_int_t                   rc;
   ngx_uint_t                  level;
@@ -124,8 +138,6 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
     return rc;
 
   mp4_split_options_t *options = mp4_split_options_init(r);
-  hls_conf_t *conf = ngx_http_get_module_loc_conf(r, ngx_http_streaming_module);
-  if(conf->length) options->length = conf->length;
 
   if(r->args.len && !mp4_split_options_set(r, options, (const char *)r->args.data, r->args.len)) {
     mp4_split_options_exit(r, options);
@@ -223,7 +235,6 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
   }
 
   mp4_context->root = root;
-
   /*if (clcf->directio <= of.size) {
     //DIRECTIO is set on transfer only to allow kernel to cache "moov" atom
     if (ngx_directio_on(of.fd) == NGX_FILE_ERROR) {
@@ -234,7 +245,7 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
   }*/
 
   if(m3u8) {
-    if((result = mp4_create_m3u8(mp4_context, bucket, options->length))) {
+    if((result = mp4_create_m3u8(mp4_context, bucket))) {
       char action[50];
       sprintf(action, "ios_playlist&segments=%d", result);
       view_count(mp4_context, (char *)path.data, options ? options->hash : NULL, action);

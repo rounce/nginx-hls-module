@@ -701,6 +701,7 @@ samples_t *get_next(trak_t const *trak, samples_t *sample, samples_t *last, u_in
 }
 
 int output_ts(struct mp4_context_t *mp4_context, struct bucket_t *bucket, struct mp4_split_options_t const *options) {
+  hls_conf_t *conf = ngx_http_get_module_loc_conf(mp4_context->r, ngx_http_streaming_module);
   u_int audio = options->fragment_track_id ? options->fragment_track_id : 1;
   uint32_t mark_video = FOURCC('v', 'i', 'd', 'e'), mark_sound = FOURCC('s', 'o', 'u', 'n');
 
@@ -746,7 +747,7 @@ int output_ts(struct mp4_context_t *mp4_context, struct bucket_t *bucket, struct
       if(end == 1 && last_track < max_fragment_size) {
         fragment[last_track].trak = moov->traks_[track_id];
         fragment[last_track].first = sample;
-        fragment[last_track].last = get_next(trak, sample, last, options->length, &last_chunk);
+        fragment[last_track].last = get_next(trak, sample, last, conf->length, &last_chunk);
         //MP4_INFO("fragment begin %ld end %ld", sample->pts_, fragment[last_track].last->pts_);
         ++last_track;
       }

@@ -41,3 +41,13 @@ hls_length
 **context:** *http, server, location*
 
 Set the fragment length requested without the "length" argument.
+
+hls_relative
+----------
+**syntax:** *hls_relative &lt;on | off&gt;*
+
+**default:** *off*
+
+**context:** *http, server, location*
+
+The directive specifies whether to keep the full URL of fragments.

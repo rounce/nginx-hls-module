@@ -1400,7 +1400,7 @@ extern tfra_t *tfra_init() {
 
 extern void tfra_exit(tfra_t *tfra) {
   if(tfra->table_) {
-//    free(tfra->table_);
+    free(tfra->table_);
   }
   free(tfra);
 }

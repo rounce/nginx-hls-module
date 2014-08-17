@@ -177,214 +177,6 @@ extern unsigned char *write_n(unsigned char *buffer, unsigned int n, uint32_t v)
   return NULL;
 }
 
-static unsigned int alignment() {
-#ifdef _WIN32
-  SYSTEM_INFO SysInfo;
-  GetSystemInfo(&SysInfo);
-  return (unsigned int)(SysInfo.dwAllocationGranularity);
-#else
-  return (unsigned int)(getpagesize());
-#endif
-}
-
-static mem_range_t *mem_range_init(char const *filename, int read_only,
-                                   uint64_t filesize,
-                                   uint64_t offset, uint64_t len) {
-  mem_range_t *mem_range = (mem_range_t *)malloc(sizeof(mem_range_t));
-  mem_range->read_only_ = read_only;
-  mem_range->filesize_ = filesize;
-  mem_range->fd_ = -1;
-  mem_range->mmap_addr_ = 0;
-  mem_range->mmap_offset_ = 0;
-  mem_range->mmap_size_ = 0;
-#ifdef WIN32
-  mem_range->fileMapHandle_ = NULL;
-#endif
-
-  mem_range->fd_ = open(filename, read_only ? O_RDONLY : (O_RDWR | O_CREAT),
-#ifdef WIN32
-                        S_IREAD | S_IWRITE
-#else
-                        0666
-#endif
-                       );
-  if(mem_range->fd_ == -1) {
-    printf("mem_range: Error opening file %s\n", filename);
-    mem_range_exit(mem_range);
-    return 0;
-  }
-
-  if(!read_only) {
-    // shrink the file (if necessary)
-    if(offset + len < filesize) {
-      int result;
-#ifdef WIN32
-      lseek(mem_range->fd_, offset + len, SEEK_SET);
-      result =
-        SetEndOfFile((HANDLE)_get_osfhandle(mem_range->fd_)) == 0 ? -1 : 0;
-#else
-      result = truncate(filename, offset + len);
-#endif
-      if(result < 0) {
-        printf("mem_range: Error shrinking file %s\n", filename);
-        mem_range_exit(mem_range);
-        return 0;
-      }
-    }
-    // stretch the file (if necessary)
-    else if(offset + len > filesize) {
-      lseek(mem_range->fd_, offset + len - 1, SEEK_SET);
-      if(write(mem_range->fd_, "", 1) < 0) {
-        printf("mem_range: Error stretching file %s\n", filename);
-        mem_range_exit(mem_range);
-        return 0;
-      }
-    }
-    mem_range->filesize_ = offset + len;
-  }
-
-#ifdef _WIN32
-  {
-    HANDLE hFile = (HANDLE)_get_osfhandle(mem_range->fd_);
-
-    if(!hFile) {
-      printf("%s", "Cannot create file mapping\n");
-      mem_range_exit(mem_range);
-      return 0;
-    }
-
-    mem_range->fileMapHandle_ = CreateFileMapping(hFile, 0,
-                                read_only ? PAGE_READONLY : PAGE_READWRITE, 0, 0, NULL);
-
-    if(!mem_range->fileMapHandle_) {
-      printf("%s", "Cannot create file mapping view\n");
-      mem_range_exit(mem_range);
-      return 0;
-    }
-  }
-#endif
-
-  return mem_range;
-}
-
-mem_range_t *mem_range_init_read(char const *filename) {
-  int read_only = 1;
-  uint64_t offset = 0;
-  struct stat status;
-  // make sure regular file exists and its not empty (can't mmap 0 bytes)
-  if(stat(filename, &status) ||
-      (status.st_mode & S_IFMT) != S_IFREG ||
-      status.st_size == 0) {
-    return 0;
-  }
-
-  return mem_range_init(filename, read_only, status.st_size,
-                        offset, status.st_size);
-}
-
-mem_range_t *mem_range_init_write(char const *filename,
-                                  uint64_t offset, uint64_t len) {
-  int read_only = 0;
-  uint64_t filesize = 0;
-  struct stat status;
-  if(!stat(filename, &status)) {
-    filesize = status.st_size;
-  }
-
-  return mem_range_init(filename, read_only, filesize, offset, len);
-}
-
-void *mem_range_map(mem_range_t *mem_range, uint64_t offset, uint32_t len) {
-  // only map when necessary
-  if(offset < mem_range->mmap_offset_ ||
-      offset + len >= mem_range->mmap_offset_ + mem_range->mmap_size_) {
-    // use 1MB of overlap, so a little random access is okay at the end of the
-    // memory mapped file.
-    const unsigned int overlap = 1024 * 1024;
-    const unsigned int window_size = 16 * 1024 * 1024;
-
-    unsigned int dwSysGran = alignment();
-    uint64_t mmap_offset = offset > overlap ? (offset - overlap) : 0;
-    len += offset > overlap ? overlap : (uint32_t)offset;
-//    uint64_t mmap_offset = offset;
-    mem_range->mmap_offset_ = (mmap_offset / dwSysGran) * dwSysGran;
-    mem_range->mmap_size_ = (mmap_offset % dwSysGran) + len;
-
-    if(mem_range->mmap_offset_ + mem_range->mmap_size_ > mem_range->filesize_) {
-      printf("%s", "mem_range_map: invalid range for file mapping\n");
-      return 0;
-    }
-
-    if(mem_range->mmap_size_ < window_size) {
-      mem_range->mmap_size_ = window_size;
-    }
-
-    if(mem_range->mmap_offset_ + mem_range->mmap_size_ > mem_range->filesize_) {
-      mem_range->mmap_size_ = mem_range->filesize_ - mem_range->mmap_offset_;
-    }
-
-//    printf("mem_range(%x): offset=%"PRIu64"\n", mem_range, offset);
-
-#ifdef WIN32
-    if(mem_range->mmap_addr_) {
-      UnmapViewOfFile(mem_range->mmap_addr_);
-    }
-
-    mem_range->mmap_addr_ = MapViewOfFile(mem_range->fileMapHandle_,
-                                          mem_range->read_only_ ? FILE_MAP_READ : FILE_MAP_WRITE,
-                                          mem_range->mmap_offset_ >> 32, (uint32_t)(mem_range->mmap_offset_),
-                                          (size_t)(mem_range->mmap_size_));
-
-    if(!mem_range->mmap_addr_) {
-      printf("%s", "Unable to make file mapping\n");
-      return 0;
-    }
-#else
-    if(mem_range->mmap_addr_) {
-      munmap(mem_range->mmap_addr_, mem_range->mmap_size_);
-    }
-
-    mem_range->mmap_addr_ = mmap(0, mem_range->mmap_size_, mem_range->read_only_ ? PROT_READ : (PROT_READ | PROT_WRITE), mem_range->read_only_ ? MAP_PRIVATE : MAP_SHARED, mem_range->fd_, mem_range->mmap_offset_);
-
-    if(mem_range->mmap_addr_ == MAP_FAILED) {
-      printf("%s", "Unable to make file mapping\n");
-      return 0;
-    }
-
-    if(mem_range->read_only_ &&
-        madvise(mem_range->mmap_addr_, mem_range->mmap_size_, MADV_SEQUENTIAL) < 0) {
-      printf("%s", "Unable to advise file mapping\n");
-      // continue
-    }
-#endif
-  }
-
-  return (char *)mem_range->mmap_addr_ + (offset - mem_range->mmap_offset_);
-}
-
-void mem_range_exit(mem_range_t *mem_range) {
-  if(!mem_range) {
-    return;
-  }
-
-#ifdef WIN32
-  CloseHandle(mem_range->fileMapHandle_);
-#endif
-
-  if(mem_range->mmap_addr_) {
-#ifdef WIN32
-    UnmapViewOfFile(mem_range->mmap_addr_);
-#else
-    munmap(mem_range->mmap_addr_, mem_range->mmap_size_);
-#endif
-  }
-
-  if(mem_range->fd_ != -1) {
-    close(mem_range->fd_);
-  }
-
-  free(mem_range);
-}
 int mp4_atom_read_header(mp4_context_t *mp4_context, mp4_atom_t *atom) {
   unsigned char atom_header[8];
 
@@ -1345,7 +1137,6 @@ extern unsigned int stts_get_samples(struct stts_t const *stts) {
   unsigned int i;
   for(i = 0; i != entries; ++i) {
     unsigned int sample_count = stts->table_[i].sample_count_;
-//  unsigned int sample_duration = stts->table_[i].sample_duration_;
     samples += sample_count;
   }
 
@@ -1440,14 +1231,6 @@ extern void stco_exit(stco_t *atom) {
   free(atom);
 }
 
-#if 0
-extern void stco_shift_offsets(stco_t *stco, int offset) {
-  unsigned int i;
-  for(i = 0; i != stco->entries_; ++i)
-    stco->chunk_offsets_[i] += offset;
-}
-#endif
-
 extern struct ctts_t *ctts_init() {
   struct ctts_t *atom = (struct ctts_t *)malloc(sizeof(struct ctts_t));
   atom->version_ = 0;
@@ -1471,7 +1254,6 @@ extern unsigned int ctts_get_samples(struct ctts_t const *ctts) {
   unsigned int i;
   for(i = 0; i != entries; ++i) {
     unsigned int sample_count = ctts->table_[i].sample_count_;
-//  unsigned int sample_offset = ctts->table_[i].sample_offset_;
     samples += sample_count;
   }
 

@@ -76,28 +76,6 @@ extern "C" {
   MOD_STREAMING_DLL_LOCAL extern uint32_t read_n(unsigned char const *buffer, unsigned int n);
   MOD_STREAMING_DLL_LOCAL extern unsigned char *write_n(unsigned char *buffer, unsigned int n, uint32_t v);
 
-  struct mem_range_t {
-    int read_only_;
-    uint64_t filesize_;
-    int fd_;
-
-    // original base mapping
-    void *mmap_addr_;
-    uint64_t mmap_offset_;
-    uint64_t mmap_size_;
-
-#ifdef WIN32
-    void *fileMapHandle_;
-#endif
-  };
-  typedef struct mem_range_t mem_range_t;
-
-  MOD_STREAMING_DLL_LOCAL extern mem_range_t *mem_range_init_read(char const *filename);
-  MOD_STREAMING_DLL_LOCAL extern mem_range_t *mem_range_init_write(char const *filename,
-      uint64_t offset, uint64_t len);
-  MOD_STREAMING_DLL_LOCAL extern void *mem_range_map(mem_range_t *mem_range, uint64_t offset, uint32_t len);
-  MOD_STREAMING_DLL_LOCAL extern void mem_range_exit(mem_range_t *mem_range);
-
   struct mp4_atom_t {
     uint32_t type_;
     uint32_t short_size_;

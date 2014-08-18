@@ -661,25 +661,6 @@ static void write_audio_packet(mpegts_stream_t *mpegts_stream,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-unsigned char *get_file_chunk(mp4_context_t *mp4_context, uint64_t pos, size_t size) {
-  unsigned char *box_data = (unsigned char *)ngx_pcalloc(mp4_context->r->pool, size);
-  ssize_t n = ngx_read_file(mp4_context->file, box_data, size, (off_t)pos);
-
-  if(n == NGX_ERROR) {
-    MP4_ERROR(ngx_read_file_n" error reading sample at pos %z from \"%s\"", pos, mp4_context->file->name.data);
-    return 0;
-  }
-
-  mp4_context->file->offset = pos + n;
-
-  if((size_t)n != size) {
-    MP4_ERROR(ngx_read_file_n" read only %z of %z from \"%s\"", n, size, mp4_context->file->name.data);
-    return 0;
-  }
-
-  return box_data;
-}
-
 samples_t *get_next(trak_t const *trak, samples_t *sample, samples_t *last, u_int seconds, unsigned int *last_chunk) {
   if(sample == last) return sample;
 
@@ -809,7 +790,7 @@ int output_ts(struct mp4_context_t *mp4_context, struct bucket_t *bucket, struct
       }
       //MP4_INFO("fragment start %"PRIi64" end %"PRIi64, offset, pos_end);
       if(!pos_end || offset == 0xFFFFFFFFFFFFFFFFULL) return 0; // sanity check
-      data = get_file_chunk(mp4_context, offset, pos_end - offset);
+      mp4_read(mp4_context, &data, pos_end - offset, offset);
       if(!data) return 0;
     }
 

@@ -49,14 +49,13 @@ extern "C" {
   ((uint32_t)(d))
 
 #define MP4_INFO(fmt, ...); \
-  mp4_log_trace(mp4_context, NGX_LOG_DEBUG_HTTP, "%s.%d: (info) "fmt, remove_path(__FILE__), __LINE__, __VA_ARGS__);
+  mp4_log_trace(mp4_context, NGX_LOG_INFO, "%s.%d: (info) "fmt, remove_path(__FILE__), __LINE__, __VA_ARGS__);
 
 #define MP4_WARNING(fmt, ...) \
   mp4_log_trace(mp4_context, NGX_LOG_WARN, "%s.%d: (warning) "fmt, remove_path(__FILE__), __LINE__, __VA_ARGS__);
 
 #define MP4_ERROR(fmt, ...) \
-  mp4_log_trace(mp4_context, NGX_LOG_ERR, "%s.%d: (error) "fmt, remove_path(__FILE__), __LINE__, __VA_ARGS__);
-//    mp4_log_trace(mp4_context, NGX_LOG_DEBUG_HTTP, "%s.%d: (error) "fmt, remove_path(__FILE__), __LINE__, __VA_ARGS__);
+  mp4_log_trace(mp4_context, NGX_LOG_CRIT, "%s.%d: (error) "fmt, remove_path(__FILE__), __LINE__, __VA_ARGS__);
 
   MOD_STREAMING_DLL_LOCAL extern uint64_t atoi64(const char *val);
 
@@ -81,14 +80,10 @@ extern "C" {
     uint32_t short_size_;
     uint64_t size_;
     uint64_t start_;
-    uint64_t end_;
   };
   typedef struct mp4_atom_t mp4_atom_t;
 
   struct mp4_context_t;
-  MOD_STREAMING_DLL_LOCAL extern
-  int mp4_atom_write_header(unsigned char *outbuffer,
-                            mp4_atom_t const *atom);
 
   struct unknown_atom_t {
     void *atom_;
@@ -142,9 +137,6 @@ extern "C" {
 
     unsigned int samples_size_;
     struct samples_t *samples_;
-
-    // current pts when reading fragments
-//  uint64_t fragment_pts_;
   };
   typedef struct trak_t trak_t;
   MOD_STREAMING_DLL_LOCAL extern trak_t *trak_init(void);
@@ -367,7 +359,6 @@ extern "C" {
 
     struct video_sample_entry_t *video_;
     struct audio_sample_entry_t *audio_;
-//struct hint_sample_entry_t* hint_;
 
     unsigned int codec_private_data_length_;
     unsigned char const *codec_private_data_;
@@ -642,9 +633,6 @@ extern "C" {
 
     trun_table_t *table_;
 
-    // additional info for uuid
-//  trak_t const* trak_;
-//  unsigned int start_;
     struct trun_t *next_;
   };
   typedef struct trun_t trun_t;
@@ -688,7 +676,6 @@ extern "C" {
 #define MP4_MPEG1Audio                      0x6b
 
   struct mp4_context_t {
-//  char* filename_;
     ngx_http_request_t *r;
     ngx_file_t *file;
 
@@ -703,6 +690,11 @@ extern "C" {
     moov_t *moov;
 
     size_t root;
+    u_char	*buffer;
+    size_t	offset;
+    size_t	buffer_size;
+    off_t	filesize;
+    ngx_flag_t	alignment;
   };
   typedef struct mp4_context_t mp4_context_t;
 
@@ -720,8 +712,7 @@ extern "C" {
                           mp4_open_flags flags);
 
   MOD_STREAMING_DLL_LOCAL extern void mp4_close(mp4_context_t *mp4_context);
-
-  MOD_STREAMING_DLL_LOCAL extern unsigned char *read_box(mp4_context_t *mp4_context, struct mp4_atom_t *atom);
+  MOD_STREAMING_DLL_LOCAL extern ngx_int_t mp4_read(mp4_context_t *mp4_context, u_char **buffer, size_t size, off_t pos);
 
 #ifdef __cplusplus
 } /* extern C definitions */

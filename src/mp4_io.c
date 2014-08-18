@@ -65,7 +65,7 @@ extern void mp4_log_trace(const mp4_context_t *mp4_context, ngx_uint_t level, co
 
   vsprintf(out, fmt, arglist);
 
-  ngx_log_debug0(level, mp4_context->r->connection->log, 0, out);
+  ngx_log_error(level, mp4_context->r->connection->log, 0, out);
 
   va_end(arglist);
 }
@@ -177,30 +177,76 @@ extern unsigned char *write_n(unsigned char *buffer, unsigned int n, uint32_t v)
   return NULL;
 }
 
-int mp4_atom_read_header(mp4_context_t *mp4_context, mp4_atom_t *atom) {
-  unsigned char atom_header[8];
+extern ngx_int_t mp4_read(mp4_context_t *mp4_context, u_char **buffer, size_t size, off_t pos) {
+    if(mp4_context->buffer_size < size) {
+        mp4_context->buffer_size = mp4_context->alignment ? (size / (size_t)4096 + 1) * 4096 : size;
+        ngx_pfree(mp4_context->r->pool, mp4_context->buffer);
+        mp4_context->buffer = 0;
+        MP4_INFO("new buffer size: %zu", mp4_context->buffer_size);
+    }
 
-  atom->start_ = mp4_context->file->offset;
-  if(ngx_read_file(mp4_context->file, atom_header, 8, (off_t)atom->start_) == NGX_ERROR) {
+    if(mp4_context->buffer) {
+        size_t start = mp4_context->file->offset - mp4_context->buffer_size;
+        if(pos + size <= mp4_context->file->offset && pos > start) {
+            *buffer = mp4_context->buffer + pos - start;
+            mp4_context->offset += size;
+            return NGX_OK;
+        } else {
+            ngx_pfree(mp4_context->r->pool, mp4_context->buffer);
+            mp4_context->buffer = 0;
+        }
+    }
+
+    if(mp4_context->file->offset + (off_t)mp4_context->buffer_size > mp4_context->filesize) {
+        mp4_context->buffer_size = (size_t)(mp4_context->filesize - mp4_context->file->offset);
+    }
+
+    off_t pos_align = mp4_context->alignment ? (pos / (size_t)4096) * 4096 : pos;
+    if(pos != pos_align) mp4_context->buffer_size += 4096;
+    if(mp4_context->buffer == NULL) {
+        mp4_context->buffer = ngx_palloc(mp4_context->r->pool, mp4_context->buffer_size);
+        if (mp4_context->buffer == NULL) {
+            return NGX_ERROR;
+        }
+    }
+
+    ssize_t n = ngx_read_file(mp4_context->file, mp4_context->buffer, mp4_context->buffer_size, pos_align);
+
+    if(n == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if((size_t) n != mp4_context->buffer_size) {
+        MP4_ERROR("read only %zu of %zu from \"%s\"", n, mp4_context->buffer_size, mp4_context->file->name.data);
+        return NGX_ERROR;
+    }
+    mp4_context->file->offset = pos_align + n;
+    mp4_context->offset += size;
+
+    *buffer = mp4_context->buffer + (pos_align == pos ? 0 : pos - pos_align);
+    return NGX_OK;
+}
+
+int mp4_atom_read_header(mp4_context_t *mp4_context, mp4_atom_t *atom) {
+  u_char *atom_header = 0;
+
+  atom->start_ = mp4_context->offset;
+  if(mp4_read(mp4_context, &atom_header, 8, atom->start_) == NGX_ERROR) {
     MP4_ERROR("%s", "Error reading atom header\n");
     return 0;
   }
-  mp4_context->file->offset = atom->start_ + 8;
   atom->short_size_ = read_32(&atom_header[0]);
   atom->type_ = read_32(&atom_header[4]);
 
   if(atom->short_size_ == 1) {
-    if(ngx_read_file(mp4_context->file, atom_header, 8, (off_t)mp4_context->file->offset) == NGX_ERROR) {
+    if(mp4_read(mp4_context, &atom_header, 8, mp4_context->offset) == NGX_ERROR) {
       MP4_ERROR("%s", "Error reading extended atom header\n");
       return 0;
     }
-    mp4_context->file->offset += 8;
     atom->size_ = read_64(&atom_header[0]);
   } else {
     atom->size_ = atom->short_size_;
   }
-
-  atom->end_ = atom->start_ + atom->size_;
 
   MP4_INFO("Atom(%c%c%c%c,%"PRIu64")\n",
            atom->type_ >> 24, atom->type_ >> 16,
@@ -215,8 +261,7 @@ int mp4_atom_read_header(mp4_context_t *mp4_context, mp4_atom_t *atom) {
   return 1;
 }
 
-extern int mp4_atom_write_header(unsigned char *outbuffer,
-                                 mp4_atom_t const *atom) {
+int mp4_atom_write_header(unsigned char *outbuffer, mp4_atom_t const *atom) {
   int write_box64 = atom->short_size_ == 1 ? 1 : 0;
 
   if(write_box64) write_32(outbuffer, 1);
@@ -230,29 +275,28 @@ extern int mp4_atom_write_header(unsigned char *outbuffer,
   } else return 8;
 }
 
-extern unsigned char *read_box(mp4_context_t *mp4_context, struct mp4_atom_t *atom) {
-  if(atom->size_ > 1024 * 1024 * 10) return 0;
+u_char *read_box(mp4_context_t *mp4_context, struct mp4_atom_t *atom) {
+  if(atom->size_ > 10 * 1024 * 1024) return 0;
 
-  unsigned char *box_data = (unsigned char *)ngx_pcalloc(mp4_context->r->pool, (size_t)atom->size_);
-  ssize_t n = ngx_read_file(mp4_context->file, box_data, atom->size_, (off_t)atom->start_);
-  mp4_context->file->offset = atom->start_ + n;
+  u_char *box_data = 0;
 
-  if(n == NGX_ERROR) {
+  if(mp4_read(mp4_context, &box_data, atom->size_, atom->start_) == NGX_ERROR) {
     MP4_ERROR("Error reading %c%c%c%c atom\n",
               atom->type_ >> 24, atom->type_ >> 16,
               atom->type_ >> 8, atom->type_);
-    free(box_data);
     return 0;
   }
+  mp4_context->offset -= 8;
 
   return box_data;
 }
 
-static mp4_context_t *mp4_context_init(ngx_http_request_t *r, ngx_file_t *file) {
+static mp4_context_t *mp4_context_init(ngx_http_request_t *r, ngx_file_t *file, off_t filesize) {
   mp4_context_t *mp4_context = (mp4_context_t *)ngx_pcalloc(r->pool, sizeof(mp4_context_t));
 
   mp4_context->r = r;
   mp4_context->file = file;
+  mp4_context->filesize = filesize;
 
   memset(&mp4_context->ftyp_atom, 0, sizeof(struct mp4_atom_t));
   memset(&mp4_context->moov_atom, 0, sizeof(struct mp4_atom_t));
@@ -261,6 +305,9 @@ static mp4_context_t *mp4_context_init(ngx_http_request_t *r, ngx_file_t *file) 
   mp4_context->moov_data = 0;
 
   mp4_context->moov = 0;
+  mp4_context->buffer = 0;
+  mp4_context->buffer_size = 1024 * 4096;
+  mp4_context->alignment = 0;
 
   return mp4_context;
 }
@@ -268,11 +315,13 @@ static mp4_context_t *mp4_context_init(ngx_http_request_t *r, ngx_file_t *file) 
 static void mp4_context_exit(struct mp4_context_t *mp4_context) {
   if(mp4_context->moov_data) ngx_pfree(mp4_context->r->pool, mp4_context->moov_data);
   if(mp4_context->moov) moov_exit(mp4_context->moov);
+  if(mp4_context->buffer) ngx_pfree(mp4_context->r->pool, mp4_context->buffer);
   ngx_pfree(mp4_context->r->pool, mp4_context);
 }
 
 extern mp4_context_t *mp4_open(ngx_http_request_t *r, ngx_file_t *file, int64_t filesize, mp4_open_flags flags) {
-  mp4_context_t *mp4_context = mp4_context_init(r, file);
+  mp4_context_t *mp4_context = mp4_context_init(r, file, filesize);
+  if(!mp4_context) return 0;
 
   while(!mp4_context->moov_atom.size_ || !mp4_context->mdat_atom.size_) {
     struct mp4_atom_t leaf_atom;
@@ -308,14 +357,6 @@ extern mp4_context_t *mp4_open(ngx_http_request_t *r, ngx_file_t *file, int64_t 
       mp4_context->mdat_atom = leaf_atom;
       break;
     }
-
-    if(leaf_atom.end_ > (uint64_t)filesize) {
-      MP4_ERROR("%s", "Reached end of file prematurely\n");
-      mp4_context_exit(mp4_context);
-      return 0;
-    }
-
-    file->offset = leaf_atom.end_;
   }
 
   return mp4_context;

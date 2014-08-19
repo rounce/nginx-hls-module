@@ -691,8 +691,8 @@ extern "C" {
 
     size_t root;
     u_char	*buffer;
-    size_t	offset;
-    size_t	buffer_size;
+    off_t	offset;
+    off_t	buffer_size;
     off_t	filesize;
     ngx_flag_t	alignment;
   };
@@ -712,7 +712,7 @@ extern "C" {
                           mp4_open_flags flags);
 
   MOD_STREAMING_DLL_LOCAL extern void mp4_close(mp4_context_t *mp4_context);
-  MOD_STREAMING_DLL_LOCAL extern ngx_int_t mp4_read(mp4_context_t *mp4_context, u_char **buffer, size_t size, off_t pos);
+  MOD_STREAMING_DLL_LOCAL extern ngx_int_t mp4_read(mp4_context_t *mp4_context, u_char **buffer, off_t size, off_t pos);
 
 #ifdef __cplusplus
 } /* extern C definitions */

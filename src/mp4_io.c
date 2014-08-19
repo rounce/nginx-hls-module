@@ -177,16 +177,16 @@ extern unsigned char *write_n(unsigned char *buffer, unsigned int n, uint32_t v)
   return NULL;
 }
 
-extern ngx_int_t mp4_read(mp4_context_t *mp4_context, u_char **buffer, size_t size, off_t pos) {
+extern ngx_int_t mp4_read(mp4_context_t *mp4_context, u_char **buffer, off_t size, off_t pos) {
     if(mp4_context->buffer_size < size) {
-        mp4_context->buffer_size = mp4_context->alignment ? (size / (size_t)4096 + 1) * 4096 : size;
+        mp4_context->buffer_size = mp4_context->alignment ? (size / (off_t)4096 + 1) * 4096 : size;
         ngx_pfree(mp4_context->r->pool, mp4_context->buffer);
         mp4_context->buffer = 0;
         MP4_INFO("new buffer size: %zu", mp4_context->buffer_size);
     }
 
     if(mp4_context->buffer) {
-        size_t start = mp4_context->file->offset - mp4_context->buffer_size;
+        off_t start = mp4_context->file->offset - mp4_context->buffer_size;
         if(pos + size <= mp4_context->file->offset && pos > start) {
             *buffer = mp4_context->buffer + pos - start;
             mp4_context->offset += size;
@@ -201,7 +201,7 @@ extern ngx_int_t mp4_read(mp4_context_t *mp4_context, u_char **buffer, size_t si
         mp4_context->buffer_size = (size_t)(mp4_context->filesize - mp4_context->file->offset);
     }
 
-    off_t pos_align = mp4_context->alignment ? (pos / (size_t)4096) * 4096 : pos;
+    off_t pos_align = mp4_context->alignment ? (pos / (off_t)4096) * 4096 : pos;
     if(pos != pos_align) mp4_context->buffer_size += 4096;
     if(mp4_context->buffer == NULL) {
         mp4_context->buffer = ngx_palloc(mp4_context->r->pool, mp4_context->buffer_size);
@@ -216,7 +216,7 @@ extern ngx_int_t mp4_read(mp4_context_t *mp4_context, u_char **buffer, size_t si
         return NGX_ERROR;
     }
 
-    if((size_t) n != mp4_context->buffer_size) {
+    if((off_t) n != mp4_context->buffer_size) {
         MP4_ERROR("read only %zu of %zu from \"%s\"", n, mp4_context->buffer_size, mp4_context->file->name.data);
         return NGX_ERROR;
     }

@@ -51,3 +51,23 @@ hls_relative
 **context:** *http, server, location*
 
 The directive specifies whether to keep the full URL of fragments.
+
+hls_mp4_buffer_size
+----------
+**syntax:** *hls_mp4_buffer_size &lt;size&gt;*
+
+**default:** *512k*
+
+**context:** *http, server, location*
+
+Sets the initial size of the buffer used for processing MP4 files.
+
+hls_mp4_max_buffer_size
+----------
+**syntax:** *hls_mp4_max_buffer_size &lt;size&gt;*
+
+**default:** *10m*
+
+**context:** *http, server, location*
+
+Size of moov atom may be quite large and can't exceed the hls_mp4_max_buffer_size size.

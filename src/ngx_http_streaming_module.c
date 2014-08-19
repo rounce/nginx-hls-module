@@ -4,80 +4,15 @@
  For licensing see the LICENSE file
 ******************************************************************************/
 
-#include <nginx.h>
-#include <ngx_config.h>
-#include <ngx_core.h>
-#include <ngx_http.h>
-#include <inttypes.h>
-
-typedef struct {
-  ngx_uint_t length;
-  ngx_flag_t relative;
-} hls_conf_t;
-
-static char *ngx_streaming(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static void *ngx_http_hls_create_conf(ngx_conf_t *cf);
-static char *ngx_http_hls_merge_conf(ngx_conf_t *cf, void *parent, void *child);
-
-static ngx_command_t ngx_streaming_commands[] = {
-  { ngx_string("hls"),
-    NGX_HTTP_LOC_CONF | NGX_CONF_NOARGS,
-    ngx_streaming,
-    0,
-    0,
-    NULL
-  },
-  { ngx_string("hls_length"),
-    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-    ngx_conf_set_num_slot,
-    NGX_HTTP_LOC_CONF_OFFSET,
-    offsetof(hls_conf_t, length),
-    NULL },
-  { ngx_string("hls_relative"),
-    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-    ngx_conf_set_flag_slot,
-    NGX_HTTP_LOC_CONF_OFFSET,
-    offsetof(hls_conf_t, relative),
-    NULL },
-  ngx_null_command
-};
-
-static ngx_http_module_t ngx_streaming_module_ctx = {
-  NULL,                          /* preconfiguration */
-  NULL,                          /* postconfiguration */
-
-  NULL,                          /* create main configuration */
-  NULL,                          /* init main configuration */
-
-  NULL,                          /* create server configuration */
-  NULL,                          /* merge server configuration */
-
-  ngx_http_hls_create_conf,      /* create location configuration */
-  ngx_http_hls_merge_conf        /* merge location configuration */
-};
-
-ngx_module_t ngx_http_streaming_module = {
-  NGX_MODULE_V1,
-  &ngx_streaming_module_ctx,     /* module context */
-  ngx_streaming_commands,        /* module directives */
-  NGX_HTTP_MODULE,               /* module type */
-  NULL,                          /* init master */
-  NULL,                          /* init module */
-  NULL,                          /* init process */
-  NULL,                          /* init thread */
-  NULL,                          /* exit thread */
-  NULL,                          /* exit process */
-  NULL,                          /* exit master */
-  NGX_MODULE_V1_PADDING
-};
-
-#include "mp4_reader.h"
+#include "ngx_http_streaming_module.h"
 #include "mp4_io.h"
+#include "mp4_reader.h"
 #include "moov.h"
 #include "output_bucket.h"
 #include "view_count.h"
 #include "output_m3u8.h"
 #include "output_ts.h"
+#include "mod_streaming_export.h"
 
 static void *ngx_http_hls_create_conf(ngx_conf_t *cf) {
     hls_conf_t *conf;
@@ -97,6 +32,8 @@ static void *ngx_http_hls_create_conf(ngx_conf_t *cf) {
 
     conf->length = NGX_CONF_UNSET_UINT;
     conf->relative = NGX_CONF_UNSET;
+    conf->buffer_size = NGX_CONF_UNSET_SIZE;
+    conf->max_buffer_size = NGX_CONF_UNSET_SIZE;
 
     return conf;
 }
@@ -107,6 +44,9 @@ static char *ngx_http_hls_merge_conf(ngx_conf_t *cf, void *parent, void *child) 
 
     ngx_conf_merge_uint_value(conf->length, prev->length, 8);
     ngx_conf_merge_value(conf->relative, prev->relative, 1);
+    ngx_conf_merge_size_value(conf->buffer_size, prev->buffer_size, 512 * 1024);
+    ngx_conf_merge_size_value(conf->max_buffer_size, prev->max_buffer_size,
+                              10 * 1024 * 1024);
 
     if(conf->length < 1) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -165,7 +105,6 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
     // ngx_open_and_stat_file in ngx_open_cached_file expects the name to be zero-terminated.
     path.data[path.len] = '\0';
   }
-
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, nlog, 0, "http mp4 filename: \"%s\"", path.data);
 
@@ -235,15 +174,6 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
   }
 
   mp4_context->root = root;
-  /*if (clcf->directio <= of.size) {
-    //DIRECTIO is set on transfer only to allow kernel to cache "moov" atom
-    if (ngx_directio_on(of.fd) == NGX_FILE_ERROR) {
-        ngx_log_error(NGX_LOG_ALERT, nlog, ngx_errno,
-                      ngx_directio_on_n " \"%s\" failed", path.data);
-    }
-    of.is_directio = 1;
-  }*/
-
   if(m3u8) {
     if((result = mp4_create_m3u8(mp4_context, bucket))) {
       char action[50];

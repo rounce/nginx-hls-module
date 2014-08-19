@@ -46,7 +46,7 @@ hls_relative
 ----------
 **syntax:** *hls_relative &lt;on | off&gt;*
 
-**default:** *off*
+**default:** *on*
 
 **context:** *http, server, location*
 

@@ -634,12 +634,13 @@ static ngx_int_t mp4_read(mp4_context_t *mp4_context, u_char **buffer, size_t si
         }
     }
 
-    if(mp4_context->file->offset + (off_t)mp4_context->buffer_size > mp4_context->filesize) {
-        mp4_context->buffer_size = (size_t)(mp4_context->filesize - mp4_context->file->offset);
-    }
-
     off_t pos_align = mp4_context->alignment ? (pos / (off_t)4096) * 4096 : pos;
     if(pos != pos_align) mp4_context->buffer_size += 4096;
+
+    if(pos_align + (off_t)mp4_context->buffer_size > mp4_context->filesize) {
+        mp4_context->buffer_size = (size_t)(mp4_context->filesize - pos_align);
+    }
+
     if(mp4_context->buffer == NULL) {
         mp4_context->buffer = ngx_palloc(mp4_context->r->pool, mp4_context->buffer_size);
         if (mp4_context->buffer == NULL) {
@@ -714,7 +715,10 @@ int mp4_atom_write_header(unsigned char *outbuffer, mp4_atom_t const *atom) {
 
 u_char *read_box(mp4_context_t *mp4_context, struct mp4_atom_t *atom) {
   hls_conf_t *conf = ngx_http_get_module_loc_conf(mp4_context->r, ngx_http_streaming_module);
-  if(atom->size_ > conf->max_buffer_size) return 0;
+  if(atom->size_ > conf->max_buffer_size) {
+    MP4_ERROR("mp4 moov atom is too large: %zu, you may want to increase hls_mp4_max_buffer_size", atom->size_);
+    return 0;
+  }
 
   u_char *box_data = 0;
 

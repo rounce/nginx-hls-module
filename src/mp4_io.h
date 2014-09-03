@@ -800,6 +800,8 @@ static mp4_context_t *mp4_open(ngx_http_request_t *r, ngx_file_t *file, int64_t 
       mp4_context->mdat_atom = leaf_atom;
       break;
     }
+
+    mp4_context->offset = leaf_atom.start_ + leaf_atom.size_;
   }
 
   return mp4_context;

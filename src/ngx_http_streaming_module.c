@@ -181,6 +181,9 @@ static ngx_int_t ngx_streaming_handler(ngx_http_request_t *r) {
       view_count(mp4_context, (char *)path.data, options ? options->hash : NULL, action);
     }
     r->allow_ranges = 0;
+    r->headers_out.content_type.data = "application/vnd.apple.mpegurl";
+    r->headers_out.content_type.len = 29;
+    r->headers_out.content_type_len = r->headers_out.content_type.len;
   } else {
     result = output_ts(mp4_context, bucket, options);
     if(!options || !result) {

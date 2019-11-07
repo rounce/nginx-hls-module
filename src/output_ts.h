@@ -796,10 +796,10 @@ int output_ts(struct mp4_context_t *mp4_context, struct bucket_t *bucket, struct
 
     int order = -1;
     while(1) {
-      u_int to_break = 1;
+      u_int to_break = 0;
       for(i = 0; i < fragment_size; ++i) {
         if(fragment[i].trak == NULL) continue;
-        if(fragment[i].first != fragment[i].last) to_break = 0;
+        if(fragment[i].first == fragment[i].last && to_break ==0) to_break = 1;
       }
       if(to_break) break;
 
